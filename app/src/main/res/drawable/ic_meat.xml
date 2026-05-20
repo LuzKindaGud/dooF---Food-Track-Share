@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Meat/drumstick icon -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Drumstick shape -->
+    <path
+        android:pathData="M15.5,3.5C13.57,3.5 12,5.07 12,7C12,7.73 12.22,8.41 12.59,8.98L5.5,16.07C4.67,16.9 4.67,18.23 5.5,19.07C6.33,19.9 7.67,19.9 8.5,19.07L15.59,11.98C16.16,12.35 16.84,12.57 17.57,12.57C19.5,12.57 21.07,11 21.07,9.07C21.07,7.14 19.5,5.57 17.57,5.57"
+        android:strokeWidth="1.8"
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="@android:color/white"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <!-- Bone end -->
+    <path
+        android:pathData="M4,20L5,21M3,19L4,20"
+        android:strokeWidth="1.8"
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="@android:color/white"
+        android:strokeLineCap="round" />
+</vector>

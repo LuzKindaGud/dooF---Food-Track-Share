@@ -1,0 +1,154 @@
+@startuml Auth_UserManagement_Activity_Diagram
+title Activity Diagram - Auth / UserManagement\nỨng dụng Food Share & Track
+
+|#LightBlue|Người dùng|
+|#LightGreen|Hệ thống (App)|
+|#LightYellow|Firebase|
+
+start
+
+|Hệ thống (App)|
+:Mở ứng dụng (AuthActivity);
+
+if (Đã đăng nhập?\n(firebaseAuth.currentUser != null)) then (Có)
+  :Chuyển sang MainActivity;
+  stop
+else (Chưa)
+  :Hiển thị màn hình Login;
+endif
+
+|Người dùng|
+:Chọn hành động;
+
+switch (Hành động?)
+case (Đăng nhập)
+  :Nhập Email và Mật khẩu;
+  
+  |Hệ thống (App)|
+  :AuthValidator kiểm tra dữ liệu;
+  
+  if (Email hợp lệ?\n(regex + không trống)) then (Không)
+    :Hiển thị lỗi email;
+    |Người dùng|
+    :Sửa lại thông tin;
+    stop
+  else (Có)
+  endif
+  
+  if (Mật khẩu hợp lệ?\n(6-128 ký tự)) then (Không)
+    :Hiển thị lỗi mật khẩu;
+    |Người dùng|
+    :Sửa lại thông tin;
+    stop
+  else (Có)
+  endif
+  
+  :Hiển thị Loading;
+  
+  |Firebase|
+  :signInWithEmailAndPassword(email, password);
+  
+  if (Đăng nhập thành công?) then (Thất bại)
+    |Hệ thống (App)|
+    :Map lỗi Firebase\n(email sai / mật khẩu sai / lỗi mạng);
+    :Hiển thị thông báo lỗi;
+    |Người dùng|
+    :Xem lỗi, thử lại;
+    stop
+  else (Thành công)
+    |Hệ thống (App)|
+    :AuthState = Success(user);
+    :navigateToMain()\nChuyển sang MainActivity;
+    stop
+  endif
+
+case (Đăng ký)
+  |Người dùng|
+  :Nhập Tên hiển thị, Email,\nMật khẩu, Xác nhận mật khẩu;
+  
+  |Hệ thống (App)|
+  :AuthValidator kiểm tra dữ liệu;
+  
+  if (Tên hiển thị trống?) then (Có)
+    :Hiển thị lỗi "Tên hiển thị\nkhông được để trống";
+    stop
+  else (Không)
+  endif
+  
+  if (Email hợp lệ?) then (Không)
+    :Hiển thị lỗi email;
+    stop
+  else (Có)
+  endif
+  
+  if (Mật khẩu hợp lệ?\n(6-128 ký tự)) then (Không)
+    :Hiển thị lỗi mật khẩu;
+    stop
+  else (Có)
+  endif
+  
+  if (Xác nhận mật khẩu khớp?) then (Không)
+    :Hiển thị lỗi\n"Mật khẩu xác nhận không khớp";
+    stop
+  else (Có)
+  endif
+  
+  :Hiển thị Loading;
+  
+  |Firebase|
+  :createUserWithEmailAndPassword(email, password);
+  
+  if (Tạo tài khoản thành công?) then (Thất bại)
+    |Hệ thống (App)|
+    :Map lỗi Firebase\n(email đã tồn tại / lỗi mạng);
+    :Hiển thị thông báo lỗi;
+    stop
+  else (Thành công)
+    :updateProfile(displayName);
+    :Lưu user profile vào Firestore\n/users/{userId}\n{uid, email, displayName,\nfamilyId: null, createdAt};
+    
+    |Hệ thống (App)|
+    :AuthState = Success(user);
+    :navigateToMain()\nChuyển sang MainActivity;
+    stop
+  endif
+
+case (Quên mật khẩu)
+  |Người dùng|
+  :Nhập Email;
+  
+  |Hệ thống (App)|
+  :AuthValidator kiểm tra email;
+  
+  if (Email hợp lệ?) then (Không)
+    :Hiển thị lỗi email;
+    stop
+  else (Có)
+  endif
+  
+  :Hiển thị Loading;
+  
+  |Firebase|
+  :sendPasswordResetEmail(email);
+  
+  if (Gửi email thành công?) then (Thất bại)
+    |Hệ thống (App)|
+    :Hiển thị thông báo lỗi;
+    stop
+  else (Thành công)
+    |Hệ thống (App)|
+    :Hiển thị thông báo\n"Đã gửi email đặt lại mật khẩu";
+    |Người dùng|
+    :Kiểm tra email\nvà đặt lại mật khẩu;
+    :Quay lại màn hình Login;
+    stop
+  endif
+
+case (Đăng xuất)
+  |Hệ thống (App)|
+  :firebaseAuth.signOut();
+  :Quay lại AuthActivity\n(màn hình Login);
+  stop
+endswitch
+
+@enduml

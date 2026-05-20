@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Milk bottle icon -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Bottle body -->
+    <path
+        android:pathData="M8,8L7,10V20C7,20.55 7.45,21 8,21H16C16.55,21 17,20.55 17,20V10L16,8"
+        android:strokeWidth="1.8"
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="@android:color/white"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <!-- Bottle neck -->
+    <path
+        android:pathData="M9,3H15V6C15,7.1 15.5,8 16,8H8C8.5,8 9,7.1 9,6V3Z"
+        android:strokeWidth="1.8"
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="@android:color/white"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <!-- Milk level line -->
+    <path
+        android:pathData="M7,14H17"
+        android:strokeWidth="1.5"
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="@android:color/white"
+        android:strokeLineCap="round" />
+</vector>

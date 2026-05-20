@@ -29,4 +29,32 @@
     </style>
 
     <style name="Theme.DoAnCoSo3" parent="Base.Theme.DoAnCoSo3" />
+
+    <!-- Circle shape for ShapeableImageView -->
+    <style name="CircleImageView" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">50%</item>
+    </style>
+
+    <!-- Bottom Navigation Active Indicator (pill highlight) -->
+    <style name="BottomNavActiveIndicator" parent="Widget.Material3.BottomNavigationView.ActiveIndicator">
+        <item name="android:color">@color/surface_container_highest</item>
+        <item name="android:width">56dp</item>
+        <item name="android:height">32dp</item>
+        <item name="shapeAppearance">@style/ShapeAppearance.Material3.Corner.Full</item>
+    </style>
+
+    <!-- Bottom Nav Text - Active -->
+    <style name="BottomNavTextActive" parent="TextAppearance.Material3.LabelMedium">
+        <item name="fontFamily">sans-serif</item>
+        <item name="android:textSize">11sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <!-- Bottom Nav Text - Inactive -->
+    <style name="BottomNavTextInactive" parent="TextAppearance.Material3.LabelMedium">
+        <item name="fontFamily">sans-serif</item>
+        <item name="android:textSize">11sp</item>
+        <item name="android:textStyle">normal</item>
+    </style>
 </resources>

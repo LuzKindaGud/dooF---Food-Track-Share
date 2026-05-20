@@ -17,6 +17,9 @@ interface FamilyGroupDao {
     @Query("SELECT * FROM family_groups WHERE id = :groupId")
     suspend fun getGroupById(groupId: String): FamilyGroupEntity?
 
+    @Query("SELECT * FROM family_groups WHERE id = :groupId")
+    fun observeGroupById(groupId: String): Flow<FamilyGroupEntity?>
+
     @Query("SELECT * FROM users WHERE familyId = :familyId")
     fun getGroupMembers(familyId: String): Flow<List<UserEntity>>
 }

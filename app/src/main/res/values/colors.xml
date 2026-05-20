@@ -49,4 +49,16 @@
     <color name="label_text">#C3CAAC</color>
     <color name="link_text">#B9F600</color>
     <color name="button_text_dark">#1D3525</color>
+    <color name="primary_fixed">#b9f600</color>
+    <color name="primary_fixed_dim">#a2d800</color>
+    <color name="on_primary_fixed">#141f00</color>
+    <color name="on_primary_fixed_variant">#384e00</color>
+    <color name="secondary_fixed">#e4e3d7</color>
+    <color name="secondary_fixed_dim">#c7c7bc</color>
+    <color name="on_secondary_fixed">#1b1c15</color>
+    <color name="on_secondary_fixed_variant">#46473f</color>
+    <color name="tertiary_fixed">#ccead0</color>
+    <color name="tertiary_fixed_dim">#b1ceb5</color>
+    <color name="on_tertiary_fixed">#072010</color>
+    <color name="on_tertiary_fixed_variant">#334c3a</color>
 </resources>
