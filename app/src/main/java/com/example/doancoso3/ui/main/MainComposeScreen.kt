@@ -17,9 +17,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.hoverable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -29,26 +27,24 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.doancoso3.R
-import com.example.doancoso3.ui.home.HomeComposeScreen
+import com.example.doancoso3.ui.components.FreshVitalityBackground
+import com.example.doancoso3.ui.fooditem.FoodItemViewModel
 import com.example.doancoso3.ui.fooditem.InventoryComposeScreen
+import com.example.doancoso3.ui.home.HomeComposeScreen
+import com.example.doancoso3.ui.profile.ProfileComposeScreen
 
 private enum class MainTab(
     val title: String,
@@ -61,56 +57,55 @@ private enum class MainTab(
 }
 
 @Composable
-fun MainComposeScreen() {
+fun MainComposeScreen(
+    inventoryViewModel: FoodItemViewModel = hiltViewModel()
+) {
     var selectedTab by rememberSaveable { mutableStateOf(MainTab.Home) }
 
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        containerColor = colorResource(R.color.surface),
-        topBar = { MainTopBar() },
-        bottomBar = {
-            MainBottomBar(
-                selectedTab = selectedTab,
-                onTabSelected = { selectedTab = it }
-            )
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { },
-                containerColor = colorResource(R.color.lime_primary),
-                contentColor = colorResource(R.color.dark_forest)
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_plus),
-                    contentDescription = "Add item"
+    FreshVitalityBackground {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            containerColor = Color.Transparent,
+            topBar = { MainTopBar() },
+            bottomBar = {
+                MainBottomBar(
+                    selectedTab = selectedTab,
+                    onTabSelected = { selectedTab = it }
                 )
+            },
+            floatingActionButton = {
+                FloatingActionButton(
+                    onClick = { },
+                    containerColor = colorResource(R.color.lime_primary),
+                    contentColor = colorResource(R.color.dark_forest)
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_plus),
+                        contentDescription = "Add item"
+                    )
+                }
             }
-        }
-    ) { innerPadding ->
-        val backgroundGradient = Brush.verticalGradient(
-            colors = listOf(
-                colorResource(R.color.surface),
-                colorResource(R.color.surface_container_low)
-            )
-        )
-
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .background(backgroundGradient)
-        ) {
-            AnimatedContent(
-                targetState = selectedTab,
-                transitionSpec = {
-                    fadeIn(tween(180)) togetherWith fadeOut(tween(180))
-                },
-                label = "MainContentFade"
-            ) { targetTab ->
-                when (targetTab) {
-                    MainTab.Home -> HomeComposeScreen()
-                    MainTab.Inventory -> InventoryComposeScreen()
-                    MainTab.Profile -> PlaceholderScreen("Profile")
+        ) { innerPadding ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+            ) {
+                AnimatedContent(
+                    targetState = selectedTab,
+                    transitionSpec = {
+                        fadeIn(tween(180)) togetherWith fadeOut(tween(180))
+                    },
+                    label = "MainContentFade"
+                ) { targetTab ->
+                    when (targetTab) {
+                        MainTab.Home -> HomeComposeScreen()
+                        MainTab.Inventory -> InventoryComposeScreen(
+                            viewModel = inventoryViewModel,
+                            onAddItemClick = { }
+                        )
+                        MainTab.Profile -> ProfileComposeScreen()
+                    }
                 }
             }
         }
@@ -122,7 +117,7 @@ private fun MainTopBar() {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(colorResource(R.color.surface))
+            .statusBarsPadding()
             .padding(horizontal = 20.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -142,7 +137,7 @@ private fun MainTopBar() {
             modifier = Modifier
                 .size(36.dp)
                 .clip(CircleShape)
-                .background(colorResource(R.color.surface_container_high))
+                .background(colorResource(R.color.surface_container_high).copy(alpha = 0.6f))
                 .padding(6.dp),
             contentAlignment = Alignment.Center
         ) {
@@ -160,20 +155,20 @@ private fun MainBottomBar(
     selectedTab: MainTab,
     onTabSelected: (MainTab) -> Unit
 ) {
-    val containerColor = Color(0xFF0C1A10)
+    val containerColor = Color(0xFF0C1A10).copy(alpha = 0.9f)
     val activeColor = Color(0xFFD4FF00)
     val inactiveColor = Color(0xFFE8EAC8)
     val hoverColor = activeColor.copy(alpha = 0.16f)
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(colorResource(R.color.surface))
+            .padding(16.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(containerColor)
-                .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 16.dp),
+                .background(containerColor, CircleShape)
+                .padding(horizontal = 12.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -190,6 +185,7 @@ private fun MainBottomBar(
         }
     }
 }
+
 
 @Composable
 private fun MainBottomBarItem(
@@ -242,19 +238,5 @@ private fun MainBottomBarItem(
                 fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium
             )
         }
-    }
-}
-
-@Composable
-private fun PlaceholderScreen(title: String) {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.headlineMedium,
-            color = colorResource(R.color.on_surface)
-        )
     }
 }

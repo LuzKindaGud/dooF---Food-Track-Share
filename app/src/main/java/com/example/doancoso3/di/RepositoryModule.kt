@@ -4,6 +4,8 @@ import com.example.doancoso3.data.repository.AuthRepository
 import com.example.doancoso3.data.repository.AuthRepositoryImpl
 import com.example.doancoso3.data.repository.FamilyGroupRepository
 import com.example.doancoso3.data.repository.FamilyGroupRepositoryImpl
+import com.example.doancoso3.data.repository.FoodItemRepository
+import com.example.doancoso3.data.repository.FoodItemRepositoryImpl
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -22,11 +24,10 @@ abstract class RepositoryModule {
     @Singleton
     abstract fun bindFamilyGroupRepository(impl: FamilyGroupRepositoryImpl): FamilyGroupRepository
 
-    // TODO: Uncomment when implementations are created
-    // @Binds
-    // @Singleton
-    // abstract fun bindFoodItemRepository(impl: FoodItemRepositoryImpl): FoodItemRepository
-    //
+    @Binds
+    @Singleton
+    abstract fun bindFoodItemRepository(impl: FoodItemRepositoryImpl): FoodItemRepository
+
     // @Binds
     // @Singleton
     // abstract fun bindShoppingListRepository(impl: ShoppingListRepositoryImpl): ShoppingListRepository

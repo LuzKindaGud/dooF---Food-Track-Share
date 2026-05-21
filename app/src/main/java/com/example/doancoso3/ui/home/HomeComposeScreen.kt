@@ -82,13 +82,13 @@ fun HomeComposeScreen(viewModel: HomeViewModel = hiltViewModel()) {
 @Composable
 private fun InventoryStatusCard(totalItems: Int, expiringCount: Int) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = colorResource(R.color.surface_container_high)),
+        colors = CardDefaults.cardColors(containerColor = colorResource(R.color.surface_container_high).copy(alpha = 0.6f)),
         shape = RoundedCornerShape(12.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 text = "INVENTORY STATUS",
-                color = colorResource(R.color.on_surface_variant),
+                color = colorResource(R.color.on_surface_variant).copy(alpha = 0.8f),
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -102,7 +102,7 @@ private fun InventoryStatusCard(totalItems: Int, expiringCount: Int) {
             Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = "$expiringCount Expiring in 48h",
-                color = colorResource(R.color.on_surface_variant),
+                color = colorResource(R.color.on_surface_variant).copy(alpha = 0.9f),
                 fontSize = 13.sp
             )
         }
@@ -113,7 +113,7 @@ private fun InventoryStatusCard(totalItems: Int, expiringCount: Int) {
 private fun SummaryCard(modifier: Modifier, label: String, value: String) {
     Card(
         modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = colorResource(R.color.surface_container_high)),
+        colors = CardDefaults.cardColors(containerColor = colorResource(R.color.surface_container_high).copy(alpha = 0.6f)),
         shape = RoundedCornerShape(12.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -133,6 +133,7 @@ private fun SummaryCard(modifier: Modifier, label: String, value: String) {
         }
     }
 }
+
 
 @Composable
 private fun SectionHeader(title: String, iconRes: Int?, actionText: String? = null) {
@@ -171,7 +172,7 @@ private fun ActivityCard(activities: List<FamilyActivityItem>) {
     )
 
     Card(
-        colors = CardDefaults.cardColors(containerColor = colorResource(R.color.surface_container_high)),
+        colors = CardDefaults.cardColors(containerColor = colorResource(R.color.surface_container_high).copy(alpha = 0.6f)),
         shape = RoundedCornerShape(12.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -218,7 +219,7 @@ private fun ActivityCard(activities: List<FamilyActivityItem>) {
 @Composable
 private fun RecentItemsCard(items: List<RecentInventoryItem>) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = colorResource(R.color.surface_container_high)),
+        colors = CardDefaults.cardColors(containerColor = colorResource(R.color.surface_container_high).copy(alpha = 0.6f)),
         shape = RoundedCornerShape(12.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -275,7 +276,7 @@ private fun RecentItemsCard(items: List<RecentInventoryItem>) {
 @Composable
 private fun MealPrepCard(mealPrepCount: Int) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = colorResource(R.color.surface_container_high)),
+        colors = CardDefaults.cardColors(containerColor = colorResource(R.color.surface_container_high).copy(alpha = 0.6f)),
         shape = RoundedCornerShape(16.dp)
     ) {
         Row(

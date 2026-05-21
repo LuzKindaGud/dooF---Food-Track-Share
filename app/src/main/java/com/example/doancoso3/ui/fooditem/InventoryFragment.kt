@@ -4,24 +4,31 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.TextView
+import androidx.compose.ui.platform.ComposeView
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.viewModels
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
 class InventoryFragment : Fragment() {
+
+    private val viewModel: FoodItemViewModel by viewModels()
 
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        val textView = TextView(requireContext()).apply {
-            text = "Inventory"
-            textSize = 24f
-            setTextColor(resources.getColor(com.example.doancoso3.R.color.on_surface, null))
-            setPadding(48, 48, 48, 48)
+        return ComposeView(requireContext()).apply {
+            setContent {
+                InventoryComposeScreen(
+                    viewModel = viewModel,
+                    onAddItemClick = {
+                        // Navigate to Add Item Screen
+                        // findNavController().navigate(R.id.action_inventoryFragment_to_addEditFoodItemFragment)
+                    }
+                )
+            }
         }
-        return textView
     }
 }

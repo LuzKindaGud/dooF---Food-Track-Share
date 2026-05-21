@@ -53,6 +53,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.doancoso3.R
+import com.example.doancoso3.ui.components.FreshVitalityBackground
 
 private object AuthRoute {
     const val LOGIN = "login"
@@ -75,27 +76,7 @@ fun AuthComposeScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(colorResource(R.color.surface))
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0x4D384E00),
-                            Color.Transparent
-                        ),
-                        startY = 0f,
-                        endY = 700f
-                    )
-                )
-        )
-
+    FreshVitalityBackground {
         NavHost(
             navController = navController,
             startDestination = AuthRoute.LOGIN,
@@ -113,6 +94,7 @@ fun AuthComposeScreen(
         }
     }
 }
+
 
 @Composable
 private fun LoginAuthScreen(

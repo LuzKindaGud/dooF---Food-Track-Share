@@ -34,4 +34,14 @@ interface AuthRepository {
      * Send a password reset email to the given address.
      */
     suspend fun resetPassword(email: String): Result<Unit>
+
+    /**
+     * Get user profile details from local database or remote.
+     */
+    fun observeUserProfile(userId: String): Flow<com.example.doancoso3.data.model.UserEntity?>
+
+    /**
+     * Sync user profile from Firestore to local database.
+     */
+    suspend fun syncUserProfile(userId: String): Result<Unit>
 }

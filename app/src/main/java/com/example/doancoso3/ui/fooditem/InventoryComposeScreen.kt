@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -36,8 +35,6 @@ import androidx.compose.material.icons.filled.Kitchen
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -46,15 +43,14 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
@@ -62,59 +58,60 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.doancoso3.R
+import com.example.doancoso3.data.model.FoodItemEntity
+import com.example.doancoso3.data.model.StorageLocation
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
-// --- Models for UI ---
-data class FoodItem(
-    val id: String,
-    val name: String,
-    val details: String,
-    val daysLeft: Int,
-    val category: String, // Fridge, Pantry, Freezer
-    val isSelected: Boolean = false
-)
+// --- Helper Extensions ---
+private fun FoodItemEntity.getDetails(): String {
+    val addedDate = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date(createdAt))
+    return "Qty: $quantity | Added: $addedDate"
+}
+
+private fun FoodItemEntity.getDaysLeft(): Int {
+    val diff = expiryDate - System.currentTimeMillis()
+    return (diff / (24 * 60 * 60 * 1000L)).toInt().coerceAtLeast(0)
+}
 
 @Composable
-fun InventoryComposeScreen() {
-    var searchQuery by remember { mutableStateOf("") }
-    val categories = listOf("All", "Fridge", "Pantry", "Freezer", "Expiring Soon")
-    var selectedCategory by remember { mutableStateOf("All") }
-    
-    // Mock Data based on the design
-    val items = remember {
-        listOf(
-            FoodItem("1", "Large Eggs (12pk)", "Added 2 days ago", 4, "Fridge"),
-            FoodItem("2", "Greek Yogurt", "Added 1 day ago", 8, "Fridge"),
-            FoodItem("3", "Organic Milk", "Added 3 days ago", 2, "Fridge"),
-            FoodItem("4", "Sourdough Bread", "Added 1 day ago", 5, "Pantry"),
-            FoodItem("5", "Chicken Breast", "Added 5 days ago", 1, "Freezer")
-        )
-    }
+fun InventoryComposeScreen(
+    viewModel: FoodItemViewModel,
+    onAddItemClick: () -> Unit
+) {
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    val selectedLocation by viewModel.selectedLocation.collectAsState()
+    val groupedItems by viewModel.groupedItems.collectAsState()
+
+    val locations = listOf("All") + StorageLocation.entries.map { it.name.lowercase().replaceFirstChar { it.uppercase() } }
+    val selectedCategoryName = selectedLocation?.name?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "All"
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // Organic Blobs (Atmospheric background)
-        OrganicBlobs()
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 20.dp)
         ) {
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             // Persistent Search Bar
             SearchBar(
                 query = searchQuery,
-                onQueryChange = { searchQuery = it },
-                placeholder = "Search 142 items..."
+                onQueryChange = { viewModel.updateSearchQuery(it) },
+                placeholder = "Search items..."
             )
 
             Spacer(modifier = Modifier.height(12.dp))
 
             // Categories Filter (Chips)
             CategoryFilter(
-                categories = categories,
-                selectedCategory = selectedCategory,
-                onCategorySelected = { selectedCategory = it }
+                categories = locations,
+                selectedCategory = selectedCategoryName,
+                onCategorySelected = { name ->
+                    val location = if (name == "All") null else StorageLocation.valueOf(name.uppercase())
+                    viewModel.updateSelectedLocation(location)
+                }
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -125,55 +122,40 @@ fun InventoryComposeScreen() {
                 contentPadding = PaddingValues(bottom = 100.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                item {
-                    InventorySection(
-                        title = "Fridge",
-                        icon = Icons.Default.Kitchen,
-                        itemCount = 12,
-                        items = items.filter { it.category == "Fridge" }
-                    )
-                }
-                item {
-                    InventorySection(
-                        title = "Pantry",
-                        icon = painterResource(R.drawable.ic_inventory),
-                        itemCount = 24,
-                        items = items.filter { it.category == "Pantry" },
-                        initiallyExpanded = false
-                    )
-                }
-                item {
-                    InventorySection(
-                        title = "Freezer",
-                        icon = Icons.Default.AcUnit,
-                        itemCount = 8,
-                        items = items.filter { it.category == "Freezer" },
-                        initiallyExpanded = false
-                    )
+                StorageLocation.entries.forEach { location ->
+                    val items = groupedItems[location] ?: emptyList()
+                    if (items.isNotEmpty() || (selectedLocation == location)) {
+                        item {
+                            val icon = when (location) {
+                                StorageLocation.FRIDGE -> Icons.Default.Kitchen
+                                StorageLocation.FREEZER -> Icons.Default.AcUnit
+                                StorageLocation.PANTRY -> painterResource(R.drawable.ic_inventory)
+                            }
+                            InventorySection(
+                                title = location.name.lowercase().replaceFirstChar { it.uppercase() },
+                                icon = icon,
+                                itemCount = items.size,
+                                items = items,
+                                initiallyExpanded = selectedLocation == location || items.isNotEmpty()
+                            )
+                        }
+                    }
                 }
             }
         }
-    }
-}
 
-@Composable
-private fun OrganicBlobs() {
-    Box(modifier = Modifier.fillMaxSize()) {
-        Box(
+        // Add Item FAB
+        FloatingActionButton(
+            onClick = onAddItemClick,
             modifier = Modifier
-                .offset(x = 200.dp, y = (-50).dp)
-                .size(300.dp)
-                .blur(80.dp)
-                .background(colorResource(R.color.primary_fixed_dim).copy(alpha = 0.15f), CircleShape)
-        )
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .offset(x = (-80).dp, y = (-100).dp)
-                .size(250.dp)
-                .blur(80.dp)
-                .background(colorResource(R.color.on_tertiary_container).copy(alpha = 0.15f), CircleShape)
-        )
+                .align(Alignment.BottomEnd)
+                .padding(24.dp),
+            containerColor = colorResource(R.color.lime_primary),
+            contentColor = Color(0xFF01180A),
+            shape = CircleShape
+        ) {
+            Icon(Icons.Default.Add, contentDescription = "Add Item")
+        }
     }
 }
 
@@ -183,24 +165,24 @@ private fun SearchBar(query: String, onQueryChange: (String) -> Unit, placeholde
         value = query,
         onValueChange = onQueryChange,
         modifier = Modifier.fillMaxWidth(),
-        placeholder = { Text(placeholder, color = colorResource(R.color.on_surface_variant)) },
+        placeholder = { Text(placeholder, color = colorResource(R.color.on_surface_variant).copy(alpha = 0.6f)) },
         leadingIcon = {
             Icon(
                 Icons.Default.Search,
                 contentDescription = null,
-                tint = colorResource(R.color.on_surface_variant)
+                tint = colorResource(R.color.on_surface_variant).copy(alpha = 0.7f)
             )
         },
         colors = OutlinedTextFieldDefaults.colors(
-            focusedContainerColor = colorResource(R.color.surface_container),
-            unfocusedContainerColor = colorResource(R.color.surface_container),
-            focusedBorderColor = colorResource(R.color.lime_primary),
-            unfocusedBorderColor = colorResource(R.color.outline_variant),
+            focusedContainerColor = colorResource(R.color.surface_container).copy(alpha = 0.5f),
+            unfocusedContainerColor = colorResource(R.color.surface_container).copy(alpha = 0.3f),
+            focusedBorderColor = colorResource(R.color.lime_primary).copy(alpha = 0.5f),
+            unfocusedBorderColor = colorResource(R.color.outline_variant).copy(alpha = 0.2f),
             cursorColor = colorResource(R.color.lime_primary),
             focusedTextColor = colorResource(R.color.on_surface),
             unfocusedTextColor = colorResource(R.color.on_surface)
         ),
-        shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp),
+        shape = RoundedCornerShape(12.dp),
         singleLine = true
     )
 }
@@ -219,43 +201,44 @@ private fun CategoryFilter(
             val isSelected = category == selectedCategory
             val borderColor = when {
                 isSelected -> Color.Transparent
-                category == "Expiring Soon" -> colorResource(R.color.error_container)
-                else -> colorResource(R.color.lime_primary).copy(alpha = 0.5f)
+                category == "Expiring Soon" -> colorResource(R.color.error).copy(alpha = 0.5f)
+                else -> colorResource(R.color.outline_variant).copy(alpha = 0.3f)
             }
             Box(
                 modifier = Modifier
                     .clip(CircleShape)
                     .background(
                         if (isSelected) colorResource(R.color.lime_primary)
-                        else colorResource(R.color.surface_container_high)
+                        else colorResource(R.color.surface_container_high).copy(alpha = 0.3f)
                     )
                     .border(
-                        width = if (!isSelected) 3.dp else 0.dp,
+                        width = 1.dp,
                         color = borderColor,
                         shape = CircleShape
                     )
                     .clickable { onCategorySelected(category) }
-                    .padding(horizontal = 16.dp, vertical = 6.dp)
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
                 Text(
                     text = category,
                     color = if (isSelected) Color(0xFF01180A)
                     else if (category == "Expiring Soon") colorResource(R.color.error)
-                    else colorResource(R.color.on_surface),
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold
+                    else colorResource(R.color.on_surface).copy(alpha = 0.8f),
+                    fontSize = 13.sp,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                 )
             }
         }
     }
 }
 
+
 @Composable
 private fun InventorySection(
     title: String,
     icon: Any,
     itemCount: Int,
-    items: List<FoodItem>,
+    items: List<FoodItemEntity>,
     initiallyExpanded: Boolean = true
 ) {
     var expanded by remember { mutableStateOf(initiallyExpanded) }
@@ -337,8 +320,9 @@ private fun InventorySection(
 }
 
 @Composable
-private fun FoodItemRow(item: FoodItem) {
+private fun FoodItemRow(item: FoodItemEntity) {
     var checked by remember { mutableStateOf(false) }
+    val daysLeft = item.getDaysLeft()
     
     Row(
         modifier = Modifier
@@ -377,15 +361,15 @@ private fun FoodItemRow(item: FoodItem) {
                 fontSize = 16.sp
             )
             Text(
-                text = item.details,
+                text = item.getDetails(),
                 color = colorResource(R.color.on_surface_variant),
                 fontSize = 12.sp
             )
         }
 
         Text(
-            text = "${item.daysLeft}D LEFT",
-            color = if (item.daysLeft <= 4) colorResource(R.color.error) else colorResource(R.color.primary_fixed_dim),
+            text = "${daysLeft}D LEFT",
+            color = if (daysLeft <= 4) colorResource(R.color.error) else colorResource(R.color.primary_fixed_dim),
             fontWeight = FontWeight.Bold,
             fontSize = 12.sp
         )
