@@ -1,14 +1,18 @@
 package com.example.doancoso3.ui.group
 
+import android.content.Context
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.doancoso3.data.model.FamilyGroupEntity
+import com.example.doancoso3.data.model.NotificationEntity
 import com.example.doancoso3.data.model.UserEntity
 import com.example.doancoso3.data.repository.FamilyGroupRepository
+import com.example.doancoso3.utils.NotificationHelper
 import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -17,7 +21,8 @@ import javax.inject.Inject
 @HiltViewModel
 class FamilyGroupViewModel @Inject constructor(
     private val repository: FamilyGroupRepository,
-    private val firebaseAuth: FirebaseAuth
+    private val firebaseAuth: FirebaseAuth,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val _actionState = MutableLiveData<FamilyGroupActionState>(FamilyGroupActionState.Idle)
@@ -29,22 +34,33 @@ class FamilyGroupViewModel @Inject constructor(
     private val _members = MutableLiveData<List<UserEntity>>(emptyList())
     val members: LiveData<List<UserEntity>> = _members
 
+    private val _notifications = MutableLiveData<List<NotificationEntity>>(emptyList())
+    val notifications: LiveData<List<NotificationEntity>> = _notifications
+
     private var membersJob: Job? = null
+    private var notificationsJob: Job? = null
     private var lastGroupId: String? = null
+    private var lastNotificationIds = mutableSetOf<String>()
 
     init {
         observeCurrentGroup()
+        observeNotifications()
     }
 
-    fun createGroup() {
+    fun createGroup(name: String) {
         val userId = currentUserId()
         if (userId == null) {
             _actionState.value = FamilyGroupActionState.Error("Bạn cần đăng nhập để tạo nhóm")
             return
         }
+        if (name.isBlank()) {
+            _actionState.value = FamilyGroupActionState.Error("Tên nhóm không được để trống")
+            return
+        }
+
         _actionState.value = FamilyGroupActionState.Loading
         viewModelScope.launch {
-            val result = repository.createGroup(userId)
+            val result = repository.createGroup(userId, name)
             result.fold(
                 onSuccess = {
                     _actionState.value = FamilyGroupActionState.Success("Tạo nhóm thành công")
@@ -116,11 +132,31 @@ class FamilyGroupViewModel @Inject constructor(
         }
     }
 
+    fun respondToJoinRequest(notificationId: String, accept: Boolean) {
+        _actionState.value = FamilyGroupActionState.Loading
+        viewModelScope.launch {
+            val result = repository.respondToJoinRequest(notificationId, accept)
+            result.fold(
+                onSuccess = {
+                    val msg = if (accept) "Đã chấp nhận yêu cầu" else "Đã từ chối yêu cầu"
+                    _actionState.value = FamilyGroupActionState.Success(msg)
+                },
+                onFailure = {
+                    _actionState.value = FamilyGroupActionState.Error(it.message ?: "Thao tác thất bại")
+                }
+            )
+        }
+    }
+
     fun refreshMembers() {
         val groupId = _currentGroup.value?.id ?: return
         viewModelScope.launch {
             repository.refreshGroupMembers(groupId)
         }
+    }
+
+    fun resetActionState() {
+        _actionState.value = FamilyGroupActionState.Idle
     }
 
     fun currentUserId(): String? = firebaseAuth.currentUser?.uid
@@ -146,6 +182,27 @@ class FamilyGroupViewModel @Inject constructor(
         membersJob = viewModelScope.launch {
             repository.getGroupMembers(groupId).collectLatest { users ->
                 _members.postValue(users)
+            }
+        }
+    }
+
+    private fun observeNotifications() {
+        val userId = currentUserId() ?: return
+        notificationsJob?.cancel()
+        notificationsJob = viewModelScope.launch {
+            repository.observeNotifications(userId).collectLatest { list ->
+                // Filter only PENDING join requests to ensure they disappear after action
+                val pendingRequests = list.filter { it.type == "JOIN_REQUEST" && it.status == "PENDING" }
+                
+                // Trigger local notification for new requests
+                pendingRequests.forEach { noti ->
+                    if (!lastNotificationIds.contains(noti.id)) {
+                        NotificationHelper.showJoinRequestNotification(context, noti.senderName)
+                        lastNotificationIds.add(noti.id)
+                    }
+                }
+                
+                _notifications.postValue(pendingRequests)
             }
         }
     }

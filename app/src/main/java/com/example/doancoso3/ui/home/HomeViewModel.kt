@@ -103,12 +103,24 @@ class HomeViewModel @Inject constructor(
 
     private fun observeFamilyActivity(familyId: String) {
         viewModelScope.launch {
-            historyEntryDao.getHistoryByFamilyId(familyId, limit = 3, offset = 0)
+            historyEntryDao.getHistoryByFamilyId(familyId, limit = 5, offset = 0)
                 .collectLatest { entries ->
                     val activities = entries.map { entry ->
                         val timeAgo = getTimeAgo(entry.timestamp)
+                        val target = entry.foodItemName ?: entry.targetName ?: ""
+                        
+                        val description = when (entry.actionType) {
+                            "ADDED" -> "${entry.userName} added $target"
+                            "EDITED" -> "${entry.userName} updated $target"
+                            "DELETED" -> "${entry.userName} removed $target"
+                            "JOINED" -> "${entry.userName} joined the group"
+                            "LEFT" -> "${entry.userName} left the group"
+                            "REMOVED" -> "${entry.userName} was removed by admin"
+                            else -> "${entry.userName} performed ${entry.actionType.lowercase()} on $target"
+                        }
+
                         FamilyActivityItem(
-                            title = "${entry.userName} ${entry.actionType.lowercase()} ${entry.foodItemName}",
+                            title = description,
                             subtitle = "${entry.actionType} • $timeAgo",
                             isRecent = entries.indexOf(entry) == 0
                         )
@@ -118,7 +130,7 @@ class HomeViewModel @Inject constructor(
                             listOf(
                                 FamilyActivityItem(
                                     "No recent activity",
-                                    "Start adding items to see activity here",
+                                    "Your family's updates will appear here",
                                     true
                                 )
                             )

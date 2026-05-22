@@ -2,7 +2,9 @@ package com.example.doancoso3.data.repository
 
 import com.example.doancoso3.data.local.dao.FoodItemDao
 import com.example.doancoso3.data.local.dao.PendingSyncDao
+import com.example.doancoso3.data.local.dao.UserDao
 import com.example.doancoso3.data.model.FoodItemEntity
+import com.example.doancoso3.data.model.HistoryEntryEntity
 import com.example.doancoso3.data.model.PendingSyncEntity
 import com.example.doancoso3.data.model.StorageLocation
 import com.google.firebase.firestore.FirebaseFirestore
@@ -11,12 +13,15 @@ import kotlinx.coroutines.tasks.await
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.example.doancoso3.data.repository.HistoryRepository
 
 @Singleton
 class FoodItemRepositoryImpl @Inject constructor(
     private val firestore: FirebaseFirestore,
     private val foodItemDao: FoodItemDao,
-    private val pendingSyncDao: PendingSyncDao
+    private val pendingSyncDao: PendingSyncDao,
+    private val userDao: UserDao,
+    private val historyRepository: HistoryRepository
 ) : FoodItemRepository {
 
     override fun getItems(familyId: String): Flow<List<FoodItemEntity>> {
@@ -45,18 +50,59 @@ class FoodItemRepositoryImpl @Inject constructor(
     override suspend fun addItem(item: FoodItemEntity) {
         foodItemDao.insert(item)
         syncToFirestore(item, "ADD")
+        
+        // Log history
+        val user = userDao.getUserById(item.createdBy)
+        historyRepository.logActivity(
+            HistoryEntryEntity(
+                id = "",
+                familyId = item.familyId,
+                userId = item.createdBy,
+                userName = user?.displayName ?: "User",
+                actionType = "ADDED",
+                foodItemName = item.name,
+                timestamp = System.currentTimeMillis()
+            )
+        )
     }
 
     override suspend fun updateItem(item: FoodItemEntity) {
         foodItemDao.update(item)
         syncToFirestore(item, "UPDATE")
+
+        // Log history
+        val user = userDao.getUserById(item.createdBy) // Ideally we'd use the current editor's ID
+        historyRepository.logActivity(
+            HistoryEntryEntity(
+                id = "",
+                familyId = item.familyId,
+                userId = item.createdBy,
+                userName = user?.displayName ?: "User",
+                actionType = "EDITED",
+                foodItemName = item.name,
+                timestamp = System.currentTimeMillis()
+            )
+        )
     }
 
     override suspend fun deleteItem(itemId: String) {
+        val item = foodItemDao.getItemById(itemId) ?: return
         foodItemDao.softDelete(itemId)
-        // Fetch the item to get familyId for Firestore delete
-        // For now, we assume soft delete in Room is enough, and sync will handle the rest
-        // In a real implementation, we'd queue a delete operation for Firestore
+        
+        // Log history
+        val user = userDao.getUserById(item.createdBy)
+        historyRepository.logActivity(
+            HistoryEntryEntity(
+                id = "",
+                familyId = item.familyId,
+                userId = item.createdBy,
+                userName = user?.displayName ?: "User",
+                actionType = "DELETED",
+                foodItemName = item.name,
+                timestamp = System.currentTimeMillis()
+            )
+        )
+
         val pendingSync = PendingSyncEntity(
             id = UUID.randomUUID().toString(),
             entityType = "FOOD_ITEM",

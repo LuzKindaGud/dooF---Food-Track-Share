@@ -9,6 +9,7 @@ import com.example.doancoso3.data.local.dao.HistoryEntryDao
 import com.example.doancoso3.data.local.dao.PendingSyncDao
 import com.example.doancoso3.data.local.dao.ShoppingItemDao
 import com.example.doancoso3.data.local.dao.UserDao
+import com.example.doancoso3.data.local.dao.NotificationDao
 import com.example.doancoso3.data.model.Converters
 import com.example.doancoso3.data.model.FamilyGroupEntity
 import com.example.doancoso3.data.model.FoodItemEntity
@@ -16,6 +17,7 @@ import com.example.doancoso3.data.model.HistoryEntryEntity
 import com.example.doancoso3.data.model.PendingSyncEntity
 import com.example.doancoso3.data.model.ShoppingItemEntity
 import com.example.doancoso3.data.model.UserEntity
+import com.example.doancoso3.data.model.NotificationEntity
 
 @Database(
     entities = [
@@ -24,9 +26,10 @@ import com.example.doancoso3.data.model.UserEntity
         FoodItemEntity::class,
         ShoppingItemEntity::class,
         HistoryEntryEntity::class,
-        PendingSyncEntity::class
+        PendingSyncEntity::class,
+        NotificationEntity::class
     ],
-    version = 1,
+    version = 4,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -37,4 +40,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun shoppingItemDao(): ShoppingItemDao
     abstract fun historyEntryDao(): HistoryEntryDao
     abstract fun pendingSyncDao(): PendingSyncDao
+    abstract fun notificationDao(): NotificationDao
 }

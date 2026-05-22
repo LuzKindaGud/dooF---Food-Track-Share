@@ -6,6 +6,8 @@ import com.example.doancoso3.data.repository.FamilyGroupRepository
 import com.example.doancoso3.data.repository.FamilyGroupRepositoryImpl
 import com.example.doancoso3.data.repository.FoodItemRepository
 import com.example.doancoso3.data.repository.FoodItemRepositoryImpl
+import com.example.doancoso3.data.repository.HistoryRepository
+import com.example.doancoso3.data.repository.HistoryRepositoryImpl
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -27,6 +29,10 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindFoodItemRepository(impl: FoodItemRepositoryImpl): FoodItemRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindHistoryRepository(impl: HistoryRepositoryImpl): HistoryRepository
 
     // @Binds
     // @Singleton

@@ -10,7 +10,8 @@ data class HistoryEntryEntity(
     val userId: String,
     val userName: String,
     val actionType: String,
-    val foodItemName: String,
+    val foodItemName: String? = null,
+    val targetName: String? = null, // Can be food name or member name
     val timestamp: Long,
     val synced: Boolean = false
 )

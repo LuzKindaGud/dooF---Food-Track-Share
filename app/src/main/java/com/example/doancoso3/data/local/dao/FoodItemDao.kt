@@ -37,4 +37,7 @@ interface FoodItemDao {
 
     @Query("SELECT * FROM food_items WHERE synced = 0")
     suspend fun getUnsyncedItems(): List<FoodItemEntity>
+
+    @Query("SELECT * FROM food_items WHERE id = :itemId")
+    suspend fun getItemById(itemId: String): FoodItemEntity?
 }

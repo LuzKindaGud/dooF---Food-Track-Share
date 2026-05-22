@@ -9,6 +9,7 @@ import com.example.doancoso3.data.local.dao.HistoryEntryDao
 import com.example.doancoso3.data.local.dao.PendingSyncDao
 import com.example.doancoso3.data.local.dao.ShoppingItemDao
 import com.example.doancoso3.data.local.dao.UserDao
+import com.example.doancoso3.data.local.dao.NotificationDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -66,5 +67,11 @@ object DatabaseModule {
     @Singleton
     fun providePendingSyncDao(database: AppDatabase): PendingSyncDao {
         return database.pendingSyncDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideNotificationDao(database: AppDatabase): NotificationDao {
+        return database.notificationDao()
     }
 }
