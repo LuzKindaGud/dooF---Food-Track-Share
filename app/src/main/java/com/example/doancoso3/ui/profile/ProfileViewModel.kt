@@ -20,6 +20,7 @@ class ProfileViewModel @Inject constructor(
     private val authRepository: AuthRepository
 ) : ViewModel() {
 
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val userProfile: LiveData<UserEntity?> = authRepository.currentUser
         .flatMapLatest { firebaseUser ->
             android.util.Log.d("ProfileViewModel", "Current user changed: ${firebaseUser?.uid}")
@@ -35,6 +36,12 @@ class ProfileViewModel @Inject constructor(
 
     private val _isLoggedOut = MutableLiveData<Boolean>(false)
     val isLoggedOut: LiveData<Boolean> = _isLoggedOut
+
+    private val _updateState = MutableLiveData<ProfileUpdateState>(ProfileUpdateState.Idle)
+    val updateState: LiveData<ProfileUpdateState> = _updateState
+
+    private val _resetPasswordState = MutableLiveData<ProfileUpdateState>(ProfileUpdateState.Idle)
+    val resetPasswordState: LiveData<ProfileUpdateState> = _resetPasswordState
 
     // Preferences (Static for now or can be moved to DataStore/Room)
     private val _pushNotificationsEnabled = MutableLiveData(true)
@@ -55,6 +62,36 @@ class ProfileViewModel @Inject constructor(
         }
     }
 
+    fun updateProfile(displayName: String) {
+        viewModelScope.launch {
+            _updateState.value = ProfileUpdateState.Loading
+            val result = authRepository.updateUserProfile(displayName)
+            if (result.isSuccess) {
+                _updateState.value = ProfileUpdateState.Success
+            } else {
+                _updateState.value = ProfileUpdateState.Error(result.exceptionOrNull()?.message ?: "Update failed")
+            }
+        }
+    }
+
+    fun resetPassword() {
+        val email = userProfile.value?.email ?: return
+        viewModelScope.launch {
+            _resetPasswordState.value = ProfileUpdateState.Loading
+            val result = authRepository.resetPassword(email)
+            if (result.isSuccess) {
+                _resetPasswordState.value = ProfileUpdateState.Success
+            } else {
+                _resetPasswordState.value = ProfileUpdateState.Error(result.exceptionOrNull()?.message ?: "Reset failed")
+            }
+        }
+    }
+
+    fun resetUpdateState() {
+        _updateState.value = ProfileUpdateState.Idle
+        _resetPasswordState.value = ProfileUpdateState.Idle
+    }
+
     fun togglePushNotifications(enabled: Boolean) {
         _pushNotificationsEnabled.value = enabled
     }
@@ -67,4 +104,11 @@ class ProfileViewModel @Inject constructor(
         authRepository.logout()
         _isLoggedOut.value = true
     }
+}
+
+sealed class ProfileUpdateState {
+    object Idle : ProfileUpdateState()
+    object Loading : ProfileUpdateState()
+    object Success : ProfileUpdateState()
+    data class Error(val message: String) : ProfileUpdateState()
 }

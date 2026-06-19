@@ -9,6 +9,7 @@ data class FoodItemEntity(
     val familyId: String,
     val name: String,
     val quantity: Double,
+    val unit: String = "pcs",
     val expiryDate: Long,
     val storageLocation: String,
     val barcode: String?,

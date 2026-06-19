@@ -8,7 +8,10 @@ import com.example.doancoso3.data.model.HistoryEntryEntity
 import com.example.doancoso3.data.model.PendingSyncEntity
 import com.example.doancoso3.data.model.StorageLocation
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.util.UUID
 import javax.inject.Inject
@@ -24,8 +27,55 @@ class FoodItemRepositoryImpl @Inject constructor(
     private val historyRepository: HistoryRepository
 ) : FoodItemRepository {
 
-    override fun getItems(familyId: String): Flow<List<FoodItemEntity>> {
-        return foodItemDao.getItemsByFamilyId(familyId)
+    /**
+     * Inventory stream backed by Room (single source of truth). While collected, a Firestore
+     * real-time listener is attached so remote changes (items added/edited/deleted on other
+     * devices) are upserted into Room and surface here automatically.
+     */
+    override fun getItems(familyId: String): Flow<List<FoodItemEntity>> = callbackFlow {
+        val roomJob = launch {
+            foodItemDao.getItemsByFamilyId(familyId).collect { trySend(it) }
+        }
+
+        val registration = firestore.collection("families")
+            .document(familyId)
+            .collection("food_items")
+            .addSnapshotListener { snapshot, _ ->
+                if (snapshot != null) {
+                    launch {
+                        for (doc in snapshot.documents) {
+                            doc.data?.let { upsertRemoteItem(it) }
+                        }
+                    }
+                }
+            }
+
+        awaitClose {
+            registration.remove()
+            roomJob.cancel()
+        }
+    }
+
+    /** Maps a Firestore document into a Room entity and upserts it (marked as synced). */
+    private suspend fun upsertRemoteItem(data: Map<String, Any?>) {
+        val id = data["id"] as? String ?: return
+        val entity = FoodItemEntity(
+            id = id,
+            familyId = data["familyId"] as? String ?: "",
+            name = data["name"] as? String ?: "",
+            quantity = (data["quantity"] as? Number)?.toDouble() ?: 0.0,
+            unit = data["unit"] as? String ?: "pcs",
+            expiryDate = (data["expiryDate"] as? Number)?.toLong() ?: 0L,
+            storageLocation = data["storageLocation"] as? String ?: StorageLocation.PANTRY.name,
+            barcode = data["barcode"] as? String,
+            imageUri = data["imageUri"] as? String,
+            createdBy = data["createdBy"] as? String ?: "",
+            createdAt = (data["createdAt"] as? Number)?.toLong() ?: 0L,
+            updatedAt = (data["updatedAt"] as? Number)?.toLong() ?: 0L,
+            synced = true,
+            deleted = (data["deleted"] as? Boolean) ?: false
+        )
+        foodItemDao.insert(entity)
     }
 
     override fun getItemsByLocation(familyId: String, location: StorageLocation): Flow<List<FoodItemEntity>> {
@@ -121,6 +171,7 @@ class FoodItemRepositoryImpl @Inject constructor(
                 "familyId" to item.familyId,
                 "name" to item.name,
                 "quantity" to item.quantity,
+                "unit" to item.unit,
                 "expiryDate" to item.expiryDate,
                 "storageLocation" to item.storageLocation,
                 "barcode" to item.barcode,

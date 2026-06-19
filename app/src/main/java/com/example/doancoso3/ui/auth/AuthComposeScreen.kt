@@ -14,25 +14,31 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.colorResource
@@ -47,6 +53,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -301,6 +309,26 @@ private fun ForgotPasswordAuthScreen(
     var email by rememberSaveable { mutableStateOf("") }
     val resetState by viewModel.resetPasswordState.observeAsState()
     val emailError by viewModel.emailError.observeAsState()
+    var showResetDialog by remember { mutableStateOf(false) }
+
+    // Show dialog when state becomes Success
+    LaunchedEffect(resetState) {
+        if (resetState is ResetPasswordState.Success) {
+            showResetDialog = true
+        }
+    }
+
+    if (showResetDialog) {
+        ResetPasswordDialog(
+            email = email.trim(),
+            state = resetState ?: ResetPasswordState.Loading,
+            onDismiss = { 
+                showResetDialog = false 
+                // Optionally navigate back to login
+                navController.popBackStack()
+            }
+        )
+    }
 
     AuthPageContainer(topPadding = 80.dp) {
         AuthHeader(
@@ -321,22 +349,12 @@ private fun ForgotPasswordAuthScreen(
             FieldError(emailError!!)
         }
 
-        when (resetState) {
-            is ResetPasswordState.Error -> FieldError(
+        if (resetState is ResetPasswordState.Error) {
+            FieldError(
                 message = (resetState as ResetPasswordState.Error).message,
                 topPadding = 16.dp,
                 centered = true
             )
-            is ResetPasswordState.Success -> Text(
-                text = "Reset link sent! Check your email inbox.",
-                color = colorResource(R.color.lime_primary),
-                textAlign = TextAlign.Center,
-                fontSize = 13.sp,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 16.dp)
-            )
-            else -> Unit
         }
 
         PrimaryAuthButton(
@@ -354,6 +372,99 @@ private fun ForgotPasswordAuthScreen(
         )
     }
 }
+
+@Composable
+fun ResetPasswordDialog(
+    email: String,
+    state: ResetPasswordState,
+    onDismiss: () -> Unit
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.7f))
+                .clickable(enabled = false) { }
+        ) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth(0.85f)
+                    .align(Alignment.Center),
+                shape = RoundedCornerShape(28.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF0A170F)),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF112216))
+            ) {
+                Column(
+                    modifier = Modifier.padding(32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // Visual Icon
+                    Box(
+                        modifier = Modifier
+                            .size(80.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (state is ResetPasswordState.Success) Color(0xFFD4FF00).copy(alpha = 0.1f)
+                                else Color(0xFFDAB770).copy(alpha = 0.1f)
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            painter = painterResource(if (state is ResetPasswordState.Success) R.drawable.ic_leaf else R.drawable.ic_email),
+                            contentDescription = null,
+                            tint = if (state is ResetPasswordState.Success) Color(0xFFD4FF00) else Color(0xFFDAB770),
+                            modifier = Modifier.size(40.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Text(
+                        text = if (state is ResetPasswordState.Success) "Email Sent!" else "Resetting...",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color.White
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Text(
+                        text = when (state) {
+                            is ResetPasswordState.Success -> "Chúng tôi đã gửi liên kết khôi phục đến:\n$email"
+                            is ResetPasswordState.Error -> "Lỗi: ${state.message}"
+                            else -> "Đang xử lý yêu cầu của bạn..."
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFF8B9E8A),
+                        textAlign = TextAlign.Center,
+                        lineHeight = 22.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(32.dp))
+
+                    Button(
+                        onClick = onDismiss,
+                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFD4FF00),
+                            contentColor = Color(0xFF01180A)
+                        ),
+                        shape = RoundedCornerShape(28.dp)
+                    ) {
+                        Text(
+                            text = if (state is ResetPasswordState.Success) "GREAT, THANKS!" else "CLOSE",
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
 
 @Composable
 private fun AuthPageContainer(

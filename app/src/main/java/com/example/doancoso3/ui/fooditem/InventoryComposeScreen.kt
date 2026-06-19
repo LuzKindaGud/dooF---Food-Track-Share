@@ -43,6 +43,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -52,6 +53,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -60,6 +62,7 @@ import androidx.compose.ui.unit.sp
 import com.example.doancoso3.R
 import com.example.doancoso3.data.model.FoodItemEntity
 import com.example.doancoso3.data.model.StorageLocation
+import android.widget.Toast
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -67,7 +70,8 @@ import java.util.Locale
 // --- Helper Extensions ---
 private fun FoodItemEntity.getDetails(): String {
     val addedDate = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date(createdAt))
-    return "Qty: $quantity | Added: $addedDate"
+    val qty = if (quantity % 1.0 == 0.0) quantity.toLong().toString() else quantity.toString()
+    return "Qty: $qty $unit | Added: $addedDate"
 }
 
 private fun FoodItemEntity.getDaysLeft(): Int {
@@ -78,14 +82,46 @@ private fun FoodItemEntity.getDaysLeft(): Int {
 @Composable
 fun InventoryComposeScreen(
     viewModel: FoodItemViewModel,
-    onAddItemClick: () -> Unit
+    onAddItemClick: () -> Unit = {}
 ) {
     val searchQuery by viewModel.searchQuery.collectAsState()
     val selectedLocation by viewModel.selectedLocation.collectAsState()
+    val expiringSoonOnly by viewModel.expiringSoonOnly.collectAsState()
     val groupedItems by viewModel.groupedItems.collectAsState()
 
     val locations = listOf("All") + StorageLocation.entries.map { it.name.lowercase().replaceFirstChar { it.uppercase() } }
     val selectedCategoryName = selectedLocation?.name?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "All"
+
+    // When "All" is active (no specific location and not the expiring-soon filter),
+    // every storage category is shown so the user always sees Fridge / Pantry / Freezer.
+    val showAllCategories = selectedLocation == null && !expiringSoonOnly
+
+    // Add / edit dialog state. null editingItem + showDialog = add mode.
+    var showDialog by remember { mutableStateOf(false) }
+    var editingItem by remember { mutableStateOf<FoodItemEntity?>(null) }
+
+    // One-shot events from the ViewModel (MVVM): close the sheet on save/delete and
+    // surface messages (e.g. validation / "join a family group first") as a Toast.
+    val context = LocalContext.current
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is InventoryUiEvent.ItemSaved -> {
+                    showDialog = false
+                    editingItem = null
+                    Toast.makeText(context, "Đã lưu vào kho hàng", Toast.LENGTH_SHORT).show()
+                }
+                is InventoryUiEvent.ItemDeleted -> {
+                    showDialog = false
+                    editingItem = null
+                    Toast.makeText(context, "Đã xóa khỏi kho hàng", Toast.LENGTH_SHORT).show()
+                }
+                is InventoryUiEvent.Message -> {
+                    Toast.makeText(context, event.text, Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -124,7 +160,7 @@ fun InventoryComposeScreen(
             ) {
                 StorageLocation.entries.forEach { location ->
                     val items = groupedItems[location] ?: emptyList()
-                    if (items.isNotEmpty() || (selectedLocation == location)) {
+                    if (showAllCategories || items.isNotEmpty() || (selectedLocation == location)) {
                         item {
                             val icon = when (location) {
                                 StorageLocation.FRIDGE -> Icons.Default.Kitchen
@@ -136,7 +172,11 @@ fun InventoryComposeScreen(
                                 icon = icon,
                                 itemCount = items.size,
                                 items = items,
-                                initiallyExpanded = selectedLocation == location || items.isNotEmpty()
+                                initiallyExpanded = selectedLocation == location || items.isNotEmpty(),
+                                onItemClick = { item ->
+                                    editingItem = item
+                                    showDialog = true
+                                }
                             )
                         }
                     }
@@ -146,7 +186,11 @@ fun InventoryComposeScreen(
 
         // Add Item FAB
         FloatingActionButton(
-            onClick = onAddItemClick,
+            onClick = {
+                editingItem = null
+                showDialog = true
+                onAddItemClick()
+            },
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(24.dp),
@@ -156,6 +200,18 @@ fun InventoryComposeScreen(
         ) {
             Icon(Icons.Default.Add, contentDescription = "Add Item")
         }
+    }
+
+    if (showDialog) {
+        AddEditFoodItemDialog(
+            viewModel = viewModel,
+            existingItem = editingItem,
+            onDismiss = {
+                showDialog = false
+                editingItem = null
+                viewModel.clearFormErrors()
+            }
+        )
     }
 }
 
@@ -239,9 +295,12 @@ private fun InventorySection(
     icon: Any,
     itemCount: Int,
     items: List<FoodItemEntity>,
-    initiallyExpanded: Boolean = true
+    initiallyExpanded: Boolean = true,
+    onItemClick: (FoodItemEntity) -> Unit = {}
 ) {
-    var expanded by remember { mutableStateOf(initiallyExpanded) }
+    // Key on initiallyExpanded so a section that transitions from empty to having items
+    // (e.g. right after adding the first item to Freezer) auto-expands and shows it.
+    var expanded by remember(initiallyExpanded) { mutableStateOf(initiallyExpanded) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -307,10 +366,19 @@ private fun InventorySection(
                 exit = shrinkVertically() + fadeOut()
             ) {
                 Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                    items.forEachIndexed { index, item ->
-                        FoodItemRow(item)
-                        if (index < items.size - 1) {
-                            HorizontalDivider(color = colorResource(R.color.outline_variant).copy(alpha = 0.2f))
+                    if (items.isEmpty()) {
+                        Text(
+                            text = "No items here yet",
+                            color = colorResource(R.color.on_surface_variant).copy(alpha = 0.7f),
+                            fontSize = 13.sp,
+                            modifier = Modifier.padding(vertical = 16.dp)
+                        )
+                    } else {
+                        items.forEachIndexed { index, item ->
+                            FoodItemRow(item, onClick = { onItemClick(item) })
+                            if (index < items.size - 1) {
+                                HorizontalDivider(color = colorResource(R.color.outline_variant).copy(alpha = 0.2f))
+                            }
                         }
                     }
                 }
@@ -320,14 +388,14 @@ private fun InventorySection(
 }
 
 @Composable
-private fun FoodItemRow(item: FoodItemEntity) {
+private fun FoodItemRow(item: FoodItemEntity, onClick: () -> Unit = {}) {
     var checked by remember { mutableStateOf(false) }
     val daysLeft = item.getDaysLeft()
     
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { /* Open edit modal */ }
+            .clickable { onClick() }
             .padding(vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

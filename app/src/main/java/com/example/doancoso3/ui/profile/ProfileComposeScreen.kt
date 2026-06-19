@@ -40,6 +40,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileComposeScreen(
+    onEditProfileClick: () -> Unit,
     viewModel: ProfileViewModel = hiltViewModel(),
     groupViewModel: FamilyGroupViewModel = hiltViewModel()
 ) {
@@ -122,7 +123,8 @@ fun ProfileComposeScreen(
         ProfileInfoCard(
             name = userProfile?.displayName ?: "Loading...",
             email = userProfile?.email ?: "...",
-            isPrimary = true
+            isPrimary = true,
+            onEditClick = onEditProfileClick
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -368,7 +370,7 @@ fun LogoutConfirmationDialog(
 }
 
 @Composable
-private fun ProfileInfoCard(name: String, email: String, isPrimary: Boolean) {
+private fun ProfileInfoCard(name: String, email: String, isPrimary: Boolean, onEditClick: () -> Unit) {
     Card(
         colors = CardDefaults.cardColors(containerColor = colorResource(R.color.surface_container).copy(alpha = 0.6f)),
         shape = RoundedCornerShape(12.dp),
@@ -436,7 +438,7 @@ private fun ProfileInfoCard(name: String, email: String, isPrimary: Boolean) {
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Button(
-                    onClick = { /* TODO */ },
+                    onClick = onEditClick,
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = colorResource(R.color.primary_container),

@@ -44,4 +44,9 @@ interface AuthRepository {
      * Sync user profile from Firestore to local database.
      */
     suspend fun syncUserProfile(userId: String): Result<Unit>
+
+    /**
+     * Update user profile information.
+     */
+    suspend fun updateUserProfile(displayName: String): Result<Unit>
 }

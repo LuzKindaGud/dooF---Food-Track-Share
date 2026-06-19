@@ -9,6 +9,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -95,15 +96,51 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun resetPassword(email: String): Result<Unit> {
         return try {
+            android.util.Log.d("AuthRepository", "Attempting to send password reset email to: $email")
             firebaseAuth.sendPasswordResetEmail(email).await()
+            android.util.Log.d("AuthRepository", "Password reset email sent successfully to: $email")
             Result.success(Unit)
         } catch (e: Exception) {
+            android.util.Log.e("AuthRepository", "Failed to send password reset email to: $email", e)
             Result.failure(e)
         }
     }
 
-    override fun observeUserProfile(userId: String): Flow<UserEntity?> {
-        return userDao.observeUserById(userId)
+    override fun observeUserProfile(userId: String): Flow<UserEntity?> = callbackFlow {
+        // Emit local Room data, and keep it fresh with a real-time Firestore listener so that
+        // changes made on other devices (e.g. being approved into a family group, which sets
+        // familyId remotely) are reflected locally.
+        val roomJob = launch {
+            userDao.observeUserById(userId).collect { trySend(it) }
+        }
+
+        val registration = firestore.collection("users")
+            .document(userId)
+            .addSnapshotListener { snapshot, _ ->
+                if (snapshot != null && snapshot.exists()) {
+                    val displayName = snapshot.getString("displayName") ?: ""
+                    val email = snapshot.getString("email") ?: ""
+                    val familyId = snapshot.getString("familyId")
+                    val createdAt = snapshot.getTimestamp("createdAt")?.toDate()?.time
+                        ?: System.currentTimeMillis()
+                    launch {
+                        userDao.insert(
+                            UserEntity(
+                                id = userId,
+                                displayName = displayName,
+                                email = email,
+                                familyId = familyId,
+                                createdAt = createdAt
+                            )
+                        )
+                    }
+                }
+            }
+
+        awaitClose {
+            registration.remove()
+            roomJob.cancel()
+        }
     }
 
     override suspend fun syncUserProfile(userId: String): Result<Unit> {
@@ -132,6 +169,33 @@ class AuthRepositoryImpl @Inject constructor(
             }
         } catch (e: Exception) {
             android.util.Log.e("AuthRepository", "Sync failed", e)
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun updateUserProfile(displayName: String): Result<Unit> {
+        return try {
+            val user = firebaseAuth.currentUser ?: return Result.failure(Exception("User not logged in"))
+            
+            // 1. Update Firebase Auth Profile
+            val profileUpdates = UserProfileChangeRequest.Builder()
+                .setDisplayName(displayName)
+                .build()
+            user.updateProfile(profileUpdates).await()
+
+            // 2. Update Firestore
+            firestore.collection("users").document(user.uid)
+                .update("displayName", displayName)
+                .await()
+
+            // 3. Update Local DB
+            userDao.getUserById(user.uid)?.let { currentEntity ->
+                userDao.insert(currentEntity.copy(displayName = displayName))
+            }
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            android.util.Log.e("AuthRepository", "Update profile failed", e)
             Result.failure(e)
         }
     }

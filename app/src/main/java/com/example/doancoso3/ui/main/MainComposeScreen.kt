@@ -61,50 +61,64 @@ fun MainComposeScreen(
     inventoryViewModel: FoodItemViewModel = hiltViewModel()
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(MainTab.Home) }
+    var isEditingProfile by rememberSaveable { mutableStateOf(false) }
 
     FreshVitalityBackground {
-        Scaffold(
-            modifier = Modifier.fillMaxSize(),
-            containerColor = Color.Transparent,
-            topBar = { MainTopBar() },
-            bottomBar = {
-                MainBottomBar(
-                    selectedTab = selectedTab,
-                    onTabSelected = { selectedTab = it }
-                )
-            },
-            floatingActionButton = {
-                FloatingActionButton(
-                    onClick = { },
-                    containerColor = colorResource(R.color.lime_primary),
-                    contentColor = colorResource(R.color.dark_forest)
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_plus),
-                        contentDescription = "Add item"
+        if (isEditingProfile) {
+            com.example.doancoso3.ui.profile.EditProfileComposeScreen(
+                onBack = { isEditingProfile = false }
+            )
+        } else {
+            Scaffold(
+                modifier = Modifier.fillMaxSize(),
+                containerColor = Color.Transparent,
+                topBar = { MainTopBar() },
+                bottomBar = {
+                    MainBottomBar(
+                        selectedTab = selectedTab,
+                        onTabSelected = { selectedTab = it }
                     )
+                },
+                floatingActionButton = {
+                    if (selectedTab != MainTab.Inventory) {
+                        FloatingActionButton(
+                            onClick = { selectedTab = MainTab.Inventory },
+                            containerColor = colorResource(R.color.lime_primary),
+                            contentColor = colorResource(R.color.dark_forest)
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_plus),
+                                contentDescription = "Add item"
+                            )
+                        }
+                    }
                 }
-            }
-        ) { innerPadding ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-            ) {
-                AnimatedContent(
-                    targetState = selectedTab,
-                    transitionSpec = {
-                        fadeIn(tween(180)) togetherWith fadeOut(tween(180))
-                    },
-                    label = "MainContentFade"
-                ) { targetTab ->
-                    when (targetTab) {
-                        MainTab.Home -> HomeComposeScreen()
-                        MainTab.Inventory -> InventoryComposeScreen(
-                            viewModel = inventoryViewModel,
-                            onAddItemClick = { }
-                        )
-                        MainTab.Profile -> ProfileComposeScreen()
+            ) { innerPadding ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                ) {
+                    AnimatedContent(
+                        targetState = selectedTab,
+                        transitionSpec = {
+                            fadeIn(tween(180)) togetherWith fadeOut(tween(180))
+                        },
+                        label = "MainContentFade"
+                    ) { targetTab ->
+                        when (targetTab) {
+                            MainTab.Home -> HomeComposeScreen(
+                                onAddItemClick = { selectedTab = MainTab.Inventory },
+                                onSeeAllClick = { selectedTab = MainTab.Inventory }
+                            )
+                            MainTab.Inventory -> InventoryComposeScreen(
+                                viewModel = inventoryViewModel,
+                                onAddItemClick = { }
+                            )
+                            MainTab.Profile -> ProfileComposeScreen(
+                                onEditProfileClick = { isEditingProfile = true }
+                            )
+                        }
                     }
                 }
             }

@@ -29,7 +29,7 @@ import com.example.doancoso3.data.model.NotificationEntity
         PendingSyncEntity::class,
         NotificationEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
