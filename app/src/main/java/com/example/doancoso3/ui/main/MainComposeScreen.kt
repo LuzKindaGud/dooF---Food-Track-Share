@@ -26,23 +26,30 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.widget.Toast
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.doancoso3.R
+import com.example.doancoso3.data.model.FoodItemEntity
 import com.example.doancoso3.ui.components.FreshVitalityBackground
+import com.example.doancoso3.ui.fooditem.AddEditFoodItemDialog
 import com.example.doancoso3.ui.fooditem.FoodItemViewModel
 import com.example.doancoso3.ui.fooditem.InventoryComposeScreen
+import com.example.doancoso3.ui.fooditem.InventoryUiEvent
 import com.example.doancoso3.ui.home.HomeComposeScreen
 import com.example.doancoso3.ui.profile.ProfileComposeScreen
 
@@ -62,6 +69,31 @@ fun MainComposeScreen(
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(MainTab.Home) }
     var isEditingProfile by rememberSaveable { mutableStateOf(false) }
+    var showAddSheet by remember { mutableStateOf(false) }
+    var editingItem by remember { mutableStateOf<FoodItemEntity?>(null) }
+
+    // Centralized one-shot event handling (MVVM): the Add/Edit sheet is hosted here so the
+    // "+" FAB works the same on every tab. Close the sheet on save/delete and show a Toast.
+    val context = LocalContext.current
+    LaunchedEffect(Unit) {
+        inventoryViewModel.events.collect { event ->
+            when (event) {
+                is InventoryUiEvent.ItemSaved -> {
+                    showAddSheet = false
+                    editingItem = null
+                    Toast.makeText(context, "Đã lưu vào kho hàng", Toast.LENGTH_SHORT).show()
+                }
+                is InventoryUiEvent.ItemDeleted -> {
+                    showAddSheet = false
+                    editingItem = null
+                    Toast.makeText(context, "Đã xóa khỏi kho hàng", Toast.LENGTH_SHORT).show()
+                }
+                is InventoryUiEvent.Message -> {
+                    Toast.makeText(context, event.text, Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
 
     FreshVitalityBackground {
         if (isEditingProfile) {
@@ -82,9 +114,13 @@ fun MainComposeScreen(
                 floatingActionButton = {
                     if (selectedTab != MainTab.Inventory) {
                         FloatingActionButton(
-                            onClick = { selectedTab = MainTab.Inventory },
+                            onClick = {
+                                editingItem = null
+                                showAddSheet = true
+                            },
                             containerColor = colorResource(R.color.lime_primary),
-                            contentColor = colorResource(R.color.dark_forest)
+                            contentColor = colorResource(R.color.dark_forest),
+                            shape = CircleShape
                         ) {
                             Icon(
                                 painter = painterResource(R.drawable.ic_plus),
@@ -108,17 +144,39 @@ fun MainComposeScreen(
                     ) { targetTab ->
                         when (targetTab) {
                             MainTab.Home -> HomeComposeScreen(
-                                onAddItemClick = { selectedTab = MainTab.Inventory },
+                                onAddItemClick = {
+                                    editingItem = null
+                                    showAddSheet = true
+                                },
                                 onSeeAllClick = { selectedTab = MainTab.Inventory }
                             )
                             MainTab.Inventory -> InventoryComposeScreen(
                                 viewModel = inventoryViewModel,
-                                onAddItemClick = { }
+                                onAddItemClick = {
+                                    editingItem = null
+                                    showAddSheet = true
+                                },
+                                onEditItem = { item ->
+                                    editingItem = item
+                                    showAddSheet = true
+                                }
                             )
                             MainTab.Profile -> ProfileComposeScreen(
                                 onEditProfileClick = { isEditingProfile = true }
                             )
                         }
+                    }
+
+                    if (showAddSheet) {
+                        AddEditFoodItemDialog(
+                            viewModel = inventoryViewModel,
+                            existingItem = editingItem,
+                            onDismiss = {
+                                showAddSheet = false
+                                editingItem = null
+                                inventoryViewModel.clearFormErrors()
+                            }
+                        )
                     }
                 }
             }

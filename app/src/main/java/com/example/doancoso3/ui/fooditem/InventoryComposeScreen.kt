@@ -82,7 +82,8 @@ private fun FoodItemEntity.getDaysLeft(): Int {
 @Composable
 fun InventoryComposeScreen(
     viewModel: FoodItemViewModel,
-    onAddItemClick: () -> Unit = {}
+    onAddItemClick: () -> Unit = {},
+    onEditItem: (FoodItemEntity) -> Unit = {}
 ) {
     val searchQuery by viewModel.searchQuery.collectAsState()
     val selectedLocation by viewModel.selectedLocation.collectAsState()
@@ -95,33 +96,6 @@ fun InventoryComposeScreen(
     // When "All" is active (no specific location and not the expiring-soon filter),
     // every storage category is shown so the user always sees Fridge / Pantry / Freezer.
     val showAllCategories = selectedLocation == null && !expiringSoonOnly
-
-    // Add / edit dialog state. null editingItem + showDialog = add mode.
-    var showDialog by remember { mutableStateOf(false) }
-    var editingItem by remember { mutableStateOf<FoodItemEntity?>(null) }
-
-    // One-shot events from the ViewModel (MVVM): close the sheet on save/delete and
-    // surface messages (e.g. validation / "join a family group first") as a Toast.
-    val context = LocalContext.current
-    LaunchedEffect(Unit) {
-        viewModel.events.collect { event ->
-            when (event) {
-                is InventoryUiEvent.ItemSaved -> {
-                    showDialog = false
-                    editingItem = null
-                    Toast.makeText(context, "Đã lưu vào kho hàng", Toast.LENGTH_SHORT).show()
-                }
-                is InventoryUiEvent.ItemDeleted -> {
-                    showDialog = false
-                    editingItem = null
-                    Toast.makeText(context, "Đã xóa khỏi kho hàng", Toast.LENGTH_SHORT).show()
-                }
-                is InventoryUiEvent.Message -> {
-                    Toast.makeText(context, event.text, Toast.LENGTH_LONG).show()
-                }
-            }
-        }
-    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -173,10 +147,7 @@ fun InventoryComposeScreen(
                                 itemCount = items.size,
                                 items = items,
                                 initiallyExpanded = selectedLocation == location || items.isNotEmpty(),
-                                onItemClick = { item ->
-                                    editingItem = item
-                                    showDialog = true
-                                }
+                                onItemClick = { item -> onEditItem(item) }
                             )
                         }
                     }
@@ -186,11 +157,7 @@ fun InventoryComposeScreen(
 
         // Add Item FAB
         FloatingActionButton(
-            onClick = {
-                editingItem = null
-                showDialog = true
-                onAddItemClick()
-            },
+            onClick = onAddItemClick,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(24.dp),
@@ -200,18 +167,6 @@ fun InventoryComposeScreen(
         ) {
             Icon(Icons.Default.Add, contentDescription = "Add Item")
         }
-    }
-
-    if (showDialog) {
-        AddEditFoodItemDialog(
-            viewModel = viewModel,
-            existingItem = editingItem,
-            onDismiss = {
-                showDialog = false
-                editingItem = null
-                viewModel.clearFormErrors()
-            }
-        )
     }
 }
 
@@ -389,34 +344,29 @@ private fun InventorySection(
 
 @Composable
 private fun FoodItemRow(item: FoodItemEntity, onClick: () -> Unit = {}) {
-    var checked by remember { mutableStateOf(false) }
     val daysLeft = item.getDaysLeft()
-    
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() }
-            .padding(vertical = 16.dp),
+            .padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Custom Checkbox for Selection
+        // Food icon tile
         Box(
             modifier = Modifier
-                .size(20.dp)
-                .clip(RoundedCornerShape(4.dp))
-                .border(1.dp, colorResource(R.color.outline_variant), RoundedCornerShape(4.dp))
-                .clickable { checked = !checked }
-                .background(if (checked) colorResource(R.color.primary_fixed_dim) else Color.Transparent),
+                .size(44.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(colorResource(R.color.surface_container_highest)),
             contentAlignment = Alignment.Center
         ) {
-            if (checked) {
-                Icon(
-                    Icons.Default.Check,
-                    contentDescription = null,
-                    tint = Color(0xFF01180A),
-                    modifier = Modifier.size(16.dp)
-                )
-            }
+            Icon(
+                imageVector = foodIconFor(item.name),
+                contentDescription = null,
+                tint = colorResource(R.color.lime_primary),
+                modifier = Modifier.size(24.dp)
+            )
         }
 
         Spacer(modifier = Modifier.width(16.dp))

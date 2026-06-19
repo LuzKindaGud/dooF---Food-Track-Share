@@ -16,6 +16,17 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BakeryDining
+import androidx.compose.material.icons.filled.Eco
+import androidx.compose.material.icons.filled.Egg
+import androidx.compose.material.icons.filled.Icecream
+import androidx.compose.material.icons.filled.LocalDrink
+import androidx.compose.material.icons.filled.LocalPizza
+import androidx.compose.material.icons.filled.LunchDining
+import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material.icons.filled.RiceBowl
+import androidx.compose.material.icons.filled.SetMeal
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -29,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -36,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.doancoso3.R
+import com.example.doancoso3.ui.fooditem.foodIconFor
 
 // Pale ivory surface used by the high-contrast hero / accent cards.
 private val Ivory = Color(0xFFFDFCF0)
@@ -288,10 +301,10 @@ private fun RecentItemRow(item: RecentInventoryItem) {
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    painter = painterResource(iconForItem(item.name)),
+                    imageVector = foodIconFor(item.name),
                     contentDescription = null,
                     tint = colorResource(R.color.lime_primary),
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(26.dp)
                 )
             }
 
@@ -404,14 +417,5 @@ private fun MealPrepCard(mealPrepCount: Int, onViewRecipe: () -> Unit) {
     }
 }
 
-/** Picks a food icon based on the item name keywords. */
-private fun iconForItem(name: String): Int {
-    val n = name.lowercase()
-    return when {
-        n.contains("egg") -> R.drawable.ic_egg
-        n.contains("milk") || n.contains("yogurt") || n.contains("dairy") -> R.drawable.ic_milk_bottle
-        n.contains("meat") || n.contains("chicken") || n.contains("beef") || n.contains("pork") || n.contains("fish") -> R.drawable.ic_meat
-        n.contains("salad") || n.contains("veg") || n.contains("fruit") || n.contains("leaf") -> R.drawable.ic_salad_bowl
-        else -> R.drawable.ic_food_item
-    }
-}
+/** Picks a clean Material food icon based on the item name keywords. */
+private fun iconForItem(name: String): ImageVector = foodIconFor(name)

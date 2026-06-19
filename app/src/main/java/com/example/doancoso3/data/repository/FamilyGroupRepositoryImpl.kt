@@ -222,9 +222,45 @@ class FamilyGroupRepositoryImpl @Inject constructor(
                 if (familyId.isNullOrBlank()) {
                     flowOf(null)
                 } else {
-                    familyGroupDao.observeGroupById(familyId)
+                    // Emit the locally cached group, and keep it in sync with Firestore so that
+                    // after a fresh login (where only the user's familyId is synced) the group
+                    // record and its members are pulled into Room and shown.
+                    callbackFlow {
+                        val roomJob = launch {
+                            familyGroupDao.observeGroupById(familyId).collect { trySend(it) }
+                        }
+                        val registration = firestore.collection(COLLECTION_FAMILIES)
+                            .document(familyId)
+                            .addSnapshotListener { snapshot, _ ->
+                                if (snapshot != null && snapshot.exists()) {
+                                    launch {
+                                        upsertGroupFromSnapshot(snapshot)
+                                        refreshGroupMembers(familyId)
+                                    }
+                                }
+                            }
+                        awaitClose {
+                            registration.remove()
+                            roomJob.cancel()
+                        }
+                    }
                 }
             }
+    }
+
+    /** Maps a Firestore family document into a Room entity and upserts it. */
+    private suspend fun upsertGroupFromSnapshot(snapshot: com.google.firebase.firestore.DocumentSnapshot) {
+        val id = snapshot.getString("id") ?: snapshot.id
+        val name = snapshot.getString("name") ?: ""
+        val ownerId = snapshot.getString(FIELD_OWNER_ID) ?: ""
+        val createdAt = when (val raw = snapshot.get(FIELD_CREATED_AT)) {
+            is com.google.firebase.Timestamp -> raw.toDate().time
+            is Number -> raw.toLong()
+            else -> System.currentTimeMillis()
+        }
+        familyGroupDao.insert(
+            FamilyGroupEntity(id = id, name = name, ownerId = ownerId, createdAt = createdAt)
+        )
     }
 
     override suspend fun refreshGroupMembers(familyId: String): Result<Unit> {

@@ -167,7 +167,7 @@ fun AddEditFoodItemDialog(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        Icons.Default.Restaurant,
+                        foodIconFor(name),
                         contentDescription = null,
                         tint = colorResource(R.color.on_surface_variant),
                         modifier = Modifier.size(48.dp)
